@@ -2,6 +2,7 @@
 
 #include <ll/api/event/EventBus.h>
 #include <ll/api/io/Logger.h>
+#include <ll/api/event/player/PlayerJoinEvent.h>
 #include <mc/network/SubClientConnectionRequest.h>
 #include <mc/world/actor/player/Player.h>
 
