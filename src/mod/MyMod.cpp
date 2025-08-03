@@ -2,66 +2,68 @@
 
 #include <ll/api/event/EventBus.h>
 #include <ll/api/io/Logger.h>
-#include <ll/api/event/player/PlayerJoinEvent.h>
-#include <mc/network/SubClientConnectionRequest.h>
 #include <mc/world/actor/player/Player.h>
+#include <mc/world/actor/player/SerializedSkin.h>
 
 std::shared_ptr<ll::io::Logger> logger = std::make_shared<ll::io::Logger>("SkinPackDetector");
 
-bool isFromSkinPack(const std::string& skinId, const std::string& resourcePatch, bool isPersona) {
-    if (skinId.find("SkinPack_") == 0 || 
-        skinId.find("Persona_") == 0 ||
-        skinId.find("Geometry_") == 0) {
-        return true;
-    }
-    
-    if (isPersona) {
-        return true;
-    }
-    
-    if (!resourcePatch.empty() && 
-        (resourcePatch.find("skin_packs") != std::string::npos ||
-         resourcePatch.find("persona") != std::string::npos)) {
-        return true;
-    }
-    
-    return false;
-}
+class SkinCheckListener : public ll::event::Listener<ll::event::PlayerJoinEvent> {
+public:
+    explicit SkinCheckListener() = default;
 
-void onPlayerJoin(ll::event::PlayerJoinEvent& ev) {
-    auto& player = ev.self();
-    
-    try {
-        if (auto connReq = player.getConnectionRequest()) {
-            std::string skinId = connReq->getSkinId();
-            std::string resourcePatch = connReq->getSkinResourcePatch();
-            bool isPersona = connReq->isPersonaSkin();
-            
-            if (isFromSkinPack(skinId, resourcePatch, isPersona)) {
-                logger->info("Player {} is using skin pack character (ID: {})", 
-                           player.getRealName(), skinId);
-                player.sendMessage("You are using an official skin pack");
-            } else {
-                logger->info("Player {} is using custom skin (ID: {})", 
-                           player.getRealName(), skinId);
-                player.sendMessage("You are using a custom skin");
+    void handle(ll::event::PlayerJoinEvent& ev) override {
+        auto& player = ev.self();
+        
+        try {
+            if (player.mSkin) {
+                const SerializedSkin& skin = *player.mSkin;
+                
+                bool isOfficial = false;
+                if (skin.isAnimated()) {
+                    isOfficial = true;
+                }
+                
+                std::string skinId = skin.skinId;
+                if (skinId.find("SkinPack_") == 0 || 
+                    skinId.find("Persona_") == 0) {
+                    isOfficial = true;
+                }
+                
+                std::string resourcePatch = skin.skinResourcePatch;
+                if (!resourcePatch.empty() && 
+                    (resourcePatch.find("skin_packs") != std::string::npos ||
+                     resourcePatch.find("persona") != std::string::npos)) {
+                    isOfficial = true;
+                }
+                
+                if (isOfficial) {
+                    logger->info("Player {} is using skin pack", player.getRealName());
+                    player.sendMessage("Official skin pack detected");
+                } else {
+                    logger->info("Player {} is using custom skin", player.getRealName());
+                    player.sendMessage("Custom skin detected");
+                }
             }
-        } else {
-            logger->warn("Player {} has no connection request data", player.getRealName());
+        } catch (...) {
+            logger->error("Error checking skin for {}", player.getRealName());
         }
-    } catch (...) {
-        logger->error("Error checking skin for player {}", player.getRealName());
     }
-}
+};
+
+std::shared_ptr<SkinCheckListener> listener;
 
 extern "C" {
     _declspec(dllexport) void ll_main() {
-        logger->info("Skin Pack Detector loaded");
-        ll::event::EventBus::getInstance().subscribe<ll::event::PlayerJoinEvent>(onPlayerJoin);
+        logger->info("Loading SkinPackDetector");
+        auto& bus = ll::event::EventBus::getInstance();
+        listener = bus.emplaceListener<ll::event::PlayerJoinEvent, SkinCheckListener>();
     }
 
     _declspec(dllexport) void ll_exit() {
-        ll::event::EventBus::getInstance().unsubscribeAll();
-        logger->info("Skin Pack Detector unloaded");
+        logger->info("Unloading SkinPackDetector");
+        if (listener) {
+            auto& bus = ll::event::EventBus::getInstance();
+            bus.removeListener(listener);
+        }
     }
 }
