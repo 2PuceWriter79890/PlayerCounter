@@ -1,32 +1,66 @@
 #include "mod/MyMod.h"
 
-#include "ll/api/mod/RegisterHelper.h"
+#include <ll/api/event/EventBus.h>
+#include <ll/api/io/Logger.h>
+#include <mc/network/SubClientConnectionRequest.h>
+#include <mc/world/actor/player/Player.h>
 
-namespace my_mod {
+std::shared_ptr<ll::io::Logger> logger = std::make_shared<ll::io::Logger>("SkinPackDetector");
 
-MyMod& MyMod::getInstance() {
-    static MyMod instance;
-    return instance;
+bool isFromSkinPack(const std::string& skinId, const std::string& resourcePatch, bool isPersona) {
+    if (skinId.find("SkinPack_") == 0 || 
+        skinId.find("Persona_") == 0 ||
+        skinId.find("Geometry_") == 0) {
+        return true;
+    }
+    
+    if (isPersona) {
+        return true;
+    }
+    
+    if (!resourcePatch.empty() && 
+        (resourcePatch.find("skin_packs") != std::string::npos ||
+         resourcePatch.find("persona") != std::string::npos)) {
+        return true;
+    }
+    
+    return false;
 }
 
-bool MyMod::load() {
-    getSelf().getLogger().debug("Loading...");
-    // Code for loading the mod goes here.
-    return true;
+void onPlayerJoin(ll::event::PlayerJoinEvent& ev) {
+    auto& player = ev.self();
+    
+    try {
+        if (auto connReq = player.getConnectionRequest()) {
+            std::string skinId = connReq->getSkinId();
+            std::string resourcePatch = connReq->getSkinResourcePatch();
+            bool isPersona = connReq->isPersonaSkin();
+            
+            if (isFromSkinPack(skinId, resourcePatch, isPersona)) {
+                logger->info("Player {} is using skin pack character (ID: {})", 
+                           player.getRealName(), skinId);
+                player.sendMessage("You are using an official skin pack");
+            } else {
+                logger->info("Player {} is using custom skin (ID: {})", 
+                           player.getRealName(), skinId);
+                player.sendMessage("You are using a custom skin");
+            }
+        } else {
+            logger->warn("Player {} has no connection request data", player.getRealName());
+        }
+    } catch (...) {
+        logger->error("Error checking skin for player {}", player.getRealName());
+    }
 }
 
-bool MyMod::enable() {
-    getSelf().getLogger().debug("Enabling...");
-    // Code for enabling the mod goes here.
-    return true;
+extern "C" {
+    _declspec(dllexport) void ll_main() {
+        logger->info("Skin Pack Detector loaded");
+        ll::event::EventBus::getInstance().subscribe<ll::event::PlayerJoinEvent>(onPlayerJoin);
+    }
+
+    _declspec(dllexport) void ll_exit() {
+        ll::event::EventBus::getInstance().unsubscribeAll();
+        logger->info("Skin Pack Detector unloaded");
+    }
 }
-
-bool MyMod::disable() {
-    getSelf().getLogger().debug("Disabling...");
-    // Code for disabling the mod goes here.
-    return true;
-}
-
-} // namespace my_mod
-
-LL_REGISTER_MOD(my_mod::MyMod, my_mod::MyMod::getInstance());
