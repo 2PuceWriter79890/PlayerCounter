@@ -1,6 +1,7 @@
 #include "mod/MyMod.h"
 
 #include <ll/api/event/EventBus.h>
+#include <ll/api/event/player/PlayerJoinEvent.h>
 #include <ll/api/io/Logger.h>
 #include <mc/world/actor/player/Player.h>
 #include <mc/world/actor/player/SerializedSkin.h>
@@ -10,6 +11,7 @@ std::shared_ptr<ll::io::Logger> logger = std::make_shared<ll::io::Logger>("SkinP
 class SkinCheckListener : public ll::event::Listener<ll::event::PlayerJoinEvent> {
 public:
     explicit SkinCheckListener() = default;
+    ~SkinCheckListener() override = default;
 
     void handle(ll::event::PlayerJoinEvent& ev) override {
         auto& player = ev.self();
@@ -17,25 +19,13 @@ public:
         try {
             if (player.mSkin) {
                 const SerializedSkin& skin = *player.mSkin;
-                
                 bool isOfficial = false;
-                if (skin.isAnimated()) {
+
+                if (skin.getAnimationFrames(::persona::AnimatedTextureType::Blinking) > 0.0f ||
+                    skin.getAnimationFrames(::persona::AnimatedTextureType::Waving) > 0.0f) {
                     isOfficial = true;
                 }
-                
-                std::string skinId = skin.skinId;
-                if (skinId.find("SkinPack_") == 0 || 
-                    skinId.find("Persona_") == 0) {
-                    isOfficial = true;
-                }
-                
-                std::string resourcePatch = skin.skinResourcePatch;
-                if (!resourcePatch.empty() && 
-                    (resourcePatch.find("skin_packs") != std::string::npos ||
-                     resourcePatch.find("persona") != std::string::npos)) {
-                    isOfficial = true;
-                }
-                
+
                 if (isOfficial) {
                     logger->info("Player {} is using skin pack", player.getRealName());
                     player.sendMessage("Official skin pack detected");
@@ -63,7 +53,7 @@ extern "C" {
         logger->info("Unloading SkinPackDetector");
         if (listener) {
             auto& bus = ll::event::EventBus::getInstance();
-            bus.removeListener(listener);
+            bus.removeListener(listener->getId());
         }
     }
 }
