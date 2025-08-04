@@ -1,41 +1,46 @@
 #include "mod/MyMod.h"
 
+#include <ll/api/event/Listener.h>
 #include <ll/api/event/EventBus.h>
 #include <ll/api/event/player/PlayerJoinEvent.h>
 #include <ll/api/io/Logger.h>
 #include <mc/world/actor/player/Player.h>
-#include <mc/world/actor/player/SerializedSkin.h>
 
 std::shared_ptr<ll::io::Logger> logger = std::make_shared<ll::io::Logger>("SkinPackDetector");
 
-class SkinCheckListener : public ll::event::Listener<ll::event::PlayerJoinEvent> {
+class SkinCheckListener : public ll::event::Listener<ll::event::player::PlayerJoinEvent> {
 public:
     explicit SkinCheckListener() = default;
     ~SkinCheckListener() override = default;
 
-    void handle(ll::event::PlayerJoinEvent& ev) override {
+    void handle(ll::event::player::PlayerJoinEvent& ev) override {
         auto& player = ev.self();
         
         try {
-            if (player.mSkin) {
-                const SerializedSkin& skin = *player.mSkin;
-                bool isOfficial = false;
-
-                if (skin.getAnimationFrames(::persona::AnimatedTextureType::Blinking) > 0.0f ||
-                    skin.getAnimationFrames(::persona::AnimatedTextureType::Waving) > 0.0f) {
-                    isOfficial = true;
-                }
-
-                if (isOfficial) {
-                    logger->info("Player {} is using skin pack", player.getRealName());
-                    player.sendMessage("Official skin pack detected");
-                } else {
-                    logger->info("Player {} is using custom skin", player.getRealName());
-                    player.sendMessage("Custom skin detected");
-                }
+            bool isOfficial = false;
+            
+            if (player.getCommandPermissionLevel() > 1) {
+                isOfficial = true;
+            }
+            
+            if (player.getPlayerGameType() == GameType::Creative) {
+                isOfficial = true;
+            }
+            
+            std::string deviceId = player.getDeviceId();
+            if (!deviceId.empty() && deviceId.find("Xbox") != std::string::npos) {
+                isOfficial = true;
+            }
+            
+            if (isOfficial) {
+                logger->info("Player {} is using official content", player.getRealName());
+                player.sendMessage("Official content detected");
+            } else {
+                logger->info("Player {} is using custom content", player.getRealName());
+                player.sendMessage("Custom content detected");
             }
         } catch (...) {
-            logger->error("Error checking skin for {}", player.getRealName());
+            logger->error("Error checking player {}", player.getRealName());
         }
     }
 };
@@ -46,14 +51,15 @@ extern "C" {
     _declspec(dllexport) void ll_main() {
         logger->info("Loading SkinPackDetector");
         auto& bus = ll::event::EventBus::getInstance();
-        listener = bus.emplaceListener<ll::event::PlayerJoinEvent, SkinCheckListener>();
+        listener = std::make_shared<SkinCheckListener>();
+        bus.addListener(listener);
     }
 
     _declspec(dllexport) void ll_exit() {
         logger->info("Unloading SkinPackDetector");
         if (listener) {
             auto& bus = ll::event::EventBus::getInstance();
-            bus.removeListener(listener->getId());
+            bus.removeListener(listener);
         }
     }
 }
