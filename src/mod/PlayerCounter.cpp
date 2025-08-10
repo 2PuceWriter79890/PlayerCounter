@@ -53,7 +53,10 @@ void PlayerCounterMod::registerCommand() {
     command.overload<NoParams>().execute(
         [this](CommandOrigin const& origin, CommandOutput& output, NoParams const& /*params*/) {
             ::Actor* actor = origin.getEntity();
-            ::Player* player = dynamic_cast<::Player*>(actor);
+            ::Player* player = nullptr;
+            if (actor && actor->isPlayer()) {
+                player = static_cast<::Player*>(actor);
+            }
 
             mce::UUID playerUuid = player ? player->getUuid() : mce::UUID::EMPTY();
 
