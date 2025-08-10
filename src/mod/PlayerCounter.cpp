@@ -1,4 +1,4 @@
-#include "PlayerCounter.h"
+#include "mod/PlayerCounter.h"
 
 #include <thread>
 #include <atomic>
@@ -7,11 +7,11 @@
 #include <ll/api/command/Command.h>
 #include <ll/api/command/CommandHandle.h>
 #include <ll/api/command/CommandRegistrar.h>
-#include <ll/api/service/Player.h> // For ll::service::getOnlinePlayers
 #include <mc/server/commands/CommandOrigin.h>
 #include <mc/server/commands/CommandOutput.h>
 #include <mc/server/commands/CommandPermissionLevel.h>
 #include <mc/platform/UUID.h>
+#include <mc/world/actor/player/Player.h> // FIX: Added vanilla Player header as per your suggestion
 
 // GMLIB Headers
 #include "gmlib/mc/world/actor/OfflinePlayer.h"
@@ -43,17 +43,15 @@ void PlayerCounterMod::registerCommand() {
             .getOrCreateCommand(
                 "playercount",
                 "获取服务器存档中的总玩家数量",
-                CommandPermissionLevel::Admin // FIX: Use 'Admin' for operator permissions
+                CommandPermissionLevel::Admin // Use 'Admin' for operator permissions
             );
 
     command.overload<>(
         [this](CommandOrigin const& origin, CommandOutput& output) {
-            // If executed by a player, get their UUID. If from console, use an empty UUID.
             mce::UUID playerUuid = origin.getPlayer() ? origin.getPlayer()->getUUID() : mce::UUID::EMPTY;
 
             output.success("§a正在后台统计玩家数量，请稍候...");
 
-            // Capture the UUID by value for thread safety.
             std::thread([this, playerUuid]() {
                 std::atomic<int> count = 0;
 
