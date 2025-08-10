@@ -12,6 +12,8 @@ else
 end
 
 add_requires("levibuildscript")
+add_requires("gmlib")
+add_repositories("groupmountain-repo https://github.com/GroupMountain/xmake-repo.git")
 
 if not has_config("vs_runtime") then
     set_runtimes("MD")
@@ -23,7 +25,8 @@ option("target_type")
     set_values("server", "client")
 option_end()
 
-target("Skin") -- Change this to your mod name.
+target("PlayerCounter") -- Change this to your mod name.
+    add_packages("gmlib")
     add_rules("@levibuildscript/linkrule")
     add_rules("@levibuildscript/modpacker")
     add_cxflags( "/EHa", "/utf-8", "/W4", "/w44265", "/w44289", "/w44296", "/w45263", "/w44738", "/w45204")
