@@ -1,4 +1,5 @@
-#include "PlayerCounter.h"
+#include "mod/PlayerCounter.h"
+
 #include <ll/api/mod/RegisterHelper.h>
 
 namespace {

@@ -7,9 +7,7 @@ namespace player_counter {
 
 class PlayerCounterMod {
 public:
-    PlayerCounterMod()
-    : mSelf(*ll::mod::NativeMod::current()),
-      mLogger(mSelf.getLogger()) {}
+    PlayerCounterMod();
 
     bool load();
     bool enable();
