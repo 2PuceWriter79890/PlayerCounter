@@ -1,28 +1,30 @@
 {
     "format_version": 3,
     "format_uuid": "289f771f-2c9a-4d73-9f3f-8492495a924d",
-    "tooth": "example.com/my-user/my-mod",
-    "version": "0.0.0",
+    "tooth": "github.com/2PuceWriter79890/PlayerCounter",
+    "version": "1.0.0",
     "info": {
         "name": "PlayerCounter",
         "description": "Get the number of players in the world.",
         "tags": [
             "platform:levilamina",
             "type:mod"
-        ]
+        ],
+        "avatar_url": ""
     },
     "variants": [
         {
             "label": "",
             "platform": "win-x64",
             "dependencies": {
-                "github.com/LiteLDev/LeviLamina": "1.4.x"
+                "github.com/LiteLDev/LeviLamina": "1.4.*",
+                "github.com/GroupMountain/GMLIB-Release": "1.4.*"
             },
             "assets": [
                 {
                     "type": "zip",
                     "urls": [
-                        "https://example.com/my-mod/assets.zip"
+                        "https://github.com/2PuceWriter79890/PlayerCounter/releases/download/Mod/PlayerCounter-windows-x64.zip"
                     ],
                     "placements": [
                         {
