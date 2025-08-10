@@ -2,5 +2,12 @@
     "name": "${modName}",
     "entry": "${modFile}",
     "version": "${modVersion}",
-    "type": "native"
+    "type": "native",
+    "author": "Puce",
+    "description": "Get the number of players in the world.",
+    "dependencies": [
+        {
+            "name": "GMLIB"
+        }
+    ]
 }
